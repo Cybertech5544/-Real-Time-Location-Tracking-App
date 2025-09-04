@@ -1,5 +1,5 @@
 // Initialize Socket.io connection
-const socket = io();
+const socket = io({ path: '/api/socket' });
 console.log("Connecting to server...");
 
 let myId = null;
