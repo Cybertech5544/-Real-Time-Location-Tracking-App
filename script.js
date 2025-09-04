@@ -1,11 +1,8 @@
-// Initialize Socket.io connection
-const socket = io({ path: '/api/socket' });
-console.log("Connecting to server...");
-
-let myId = null;
+// Initialize the map
 let map;
-let markers = {};
-let userCount = 0;
+let marker;
+let watchId;
+let userCount = 1;
 
 // Update status indicators
 function updateStatus(elementId, text, isError = false) {
@@ -27,58 +24,41 @@ function initMap() {
     console.log("Map initialized");
 }
 
+// Simulate other users (for demo purposes)
+function simulateOtherUsers() {
+    // This is just for demonstration - in a real app, you'd have real WebSocket connections
+    updateStatus('users-online', userCount);
+    
+    // Simulate user count changes
+    setInterval(() => {
+        userCount = Math.max(1, userCount + (Math.random() > 0.7 ? 1 : -1));
+        updateStatus('users-online', userCount);
+    }, 5000);
+}
+
 // Initialize the application
 function initApp() {
     initMap();
-    
-    // Socket event handlers
-    socket.on('connect', () => {
-        myId = socket.id;
-        updateStatus('connection-status', 'Connected');
-        updateStatus('user-id', myId);
-        console.log("Connected with ID:", myId);
-    });
-    
-    socket.on('disconnect', () => {
-        updateStatus('connection-status', 'Disconnected', true);
-        console.log("Disconnected from server");
-    });
-    
-    socket.on('receive-location', (data) => {
-        const { id, latitude, longitude } = data;
-        
-        if (markers[id]) {
-            markers[id].setLatLng([latitude, longitude]);
-        } else {
-            markers[id] = L.marker([latitude, longitude])
-                .addTo(map)
-                .bindPopup(`User: ${id.substring(0, 8)}`);
-            
-            userCount++;
-            updateStatus('users-online', userCount);
-        }
-        
-        if (id === myId) {
-            map.setView([latitude, longitude], 16);
-        }
-    });
-    
-    socket.on('user-disconnected', (id) => {
-        if (markers[id]) {
-            map.removeLayer(markers[id]);
-            delete markers[id];
-            
-            userCount--;
-            updateStatus('users-online', userCount);
-        }
-    });
+    updateStatus('connection-status', 'Connected (Demo Mode)');
+    updateStatus('user-id', 'DEMO-' + Math.floor(Math.random() * 10000));
+    simulateOtherUsers();
     
     // Request geolocation
     if (navigator.geolocation) {
-        navigator.geolocation.watchPosition(
+        watchId = navigator.geolocation.watchPosition(
             (position) => {
                 const { latitude, longitude } = position.coords;
-                socket.emit('send-location', { latitude, longitude });
+                
+                // Update the map
+                if (marker) {
+                    marker.setLatLng([latitude, longitude]);
+                } else {
+                    marker = L.marker([latitude, longitude])
+                        .addTo(map)
+                        .bindPopup('Your location');
+                }
+                
+                map.setView([latitude, longitude], 16);
                 updateStatus('location-status', 'Access granted');
             },
             (error) => {
