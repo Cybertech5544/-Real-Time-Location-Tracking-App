@@ -1,0 +1,538 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Real-Time Location Tracker</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+        
+        body {
+            background: linear-gradient(135deg, #1a2a6c, #b21f1f, #fdbb2d);
+            color: white;
+            min-height: 100vh;
+            padding: 20px;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+        
+        header {
+            text-align: center;
+            padding: 20px;
+            background: rgba(0, 0, 0, 0.3);
+            border-radius: 10px;
+            backdrop-filter: blur(10px);
+        }
+        
+        h1 {
+            font-size: 2.5rem;
+            margin-bottom: 10px;
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.5);
+        }
+        
+        .description {
+            font-size: 1.1rem;
+            max-width: 800px;
+            margin: 0 auto;
+            line-height: 1.6;
+        }
+        
+        .content {
+            display: flex;
+            gap: 20px;
+            flex-wrap: wrap;
+        }
+        
+        .map-container {
+            flex: 1;
+            min-width: 300px;
+            border-radius: 10px;
+            overflow: hidden;
+            box-shadow: 0 10px 20px rgba(0, 0, 0, 0.3);
+            background: rgba(0, 0, 0, 0.2);
+            backdrop-filter: blur(10px);
+        }
+        
+        #map {
+            height: 500px;
+            width: 100%;
+        }
+        
+        .panel-container {
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+            flex: 0 0 300px;
+        }
+        
+        .status-panel {
+            background: rgba(0, 0, 0, 0.3);
+            border-radius: 10px;
+            padding: 20px;
+            backdrop-filter: blur(10px);
+            box-shadow: 0 10px 20px rgba(0, 0, 0, 0.3);
+        }
+        
+        .connection-panel {
+            background: rgba(0, 0, 0, 0.3);
+            border-radius: 10px;
+            padding: 20px;
+            backdrop-filter: blur(10px);
+            box-shadow: 0 10px 20px rgba(0, 0, 0, 0.3);
+        }
+        
+        .panel-title {
+            font-size: 1.5rem;
+            margin-bottom: 15px;
+            padding-bottom: 10px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.2);
+        }
+        
+        .status-item {
+            margin-bottom: 15px;
+            padding: 10px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 8px;
+        }
+        
+        .status-label {
+            font-weight: bold;
+            display: block;
+            margin-bottom: 5px;
+        }
+        
+        .status-value {
+            font-family: monospace;
+        }
+        
+        .btn {
+            display: block;
+            width: 100%;
+            padding: 12px;
+            margin: 10px 0;
+            border: none;
+            border-radius: 5px;
+            background: #4CAF50;
+            color: white;
+            font-size: 16px;
+            cursor: pointer;
+            transition: background 0.3s;
+        }
+        
+        .btn:hover {
+            background: #45a049;
+        }
+        
+        .btn-copy {
+            background: #2196F3;
+        }
+        
+        .btn-copy:hover {
+            background: #0b7dda;
+        }
+        
+        .input-group {
+            margin-bottom: 15px;
+        }
+        
+        .input-group label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+        }
+        
+        .input-group input {
+            width: 100%;
+            padding: 10px;
+            border: none;
+            border-radius: 5px;
+            background: rgba(255, 255, 255, 0.1);
+            color: white;
+        }
+        
+        .instructions {
+            background: rgba(0, 0, 0, 0.3);
+            border-radius: 10px;
+            padding: 20px;
+            margin-top: 20px;
+            backdrop-filter: blur(10px);
+        }
+        
+        .instructions h2 {
+            margin-bottom: 15px;
+        }
+        
+        .instructions ol {
+            margin-left: 20px;
+            line-height: 1.6;
+        }
+        
+        .instructions li {
+            margin-bottom: 10px;
+        }
+        
+        footer {
+            text-align: center;
+            margin-top: 30px;
+            padding: 20px;
+            font-size: 0.9rem;
+            opacity: 0.8;
+        }
+        
+        @media (max-width: 768px) {
+            .content {
+                flex-direction: column;
+            }
+            
+            .panel-container {
+                flex: 1;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>Real-Time Location Tracker</h1>
+            <p class="description">
+                This application shows your current location on a map and allows you to see
+                the locations of other users in real-time using peer-to-peer technology.
+            </p>
+        </header>
+        
+        <div class="content">
+            <div class="map-container">
+                <div id="map"></div>
+            </div>
+            
+            <div class="panel-container">
+                <div class="status-panel">
+                    <h2 class="panel-title">Status</h2>
+                    <div class="status-item">
+                        <span class="status-label">Your ID:</span>
+                        <span id="user-id" class="status-value">Generating...</span>
+                    </div>
+                    <div class="status-item">
+                        <span class="status-label">Connection:</span>
+                        <span id="connection-status" class="status-value">Disconnected</span>
+                    </div>
+                    <div class="status-item">
+                        <span class="status-label">Location Access:</span>
+                        <span id="location-status" class="status-value">Requesting access...</span>
+                    </div>
+                    <div class="status-item">
+                        <span class="status-label">Peers Connected:</span>
+                        <span id="peers-connected" class="status-value">0</span>
+                    </div>
+                </div>
+                
+                <div class="connection-panel">
+                    <h2 class="panel-title">Connect to Peers</h2>
+                    <div class="input-group">
+                        <label for="peer-id">Your Connection ID:</label>
+                        <input type="text" id="peer-id" readonly>
+                        <button class="btn btn-copy" id="copy-id">Copy ID</button>
+                    </div>
+                    <div class="input-group">
+                        <label for="connect-id">Connect to Peer ID:</label>
+                        <input type="text" id="connect-id" placeholder="Enter peer's ID">
+                        <button class="btn" id="connect-btn">Connect</button>
+                    </div>
+                    <button class="btn" id="create-room">Create Room</button>
+                </div>
+            </div>
+        </div>
+        
+        <div class="instructions">
+            <h2>How to Use</h2>
+            <ol>
+                <li>Allow location access when prompted by your browser</li>
+                <li>Copy your Connection ID and share it with friends</li>
+                <li>Have friends enter your ID in the "Connect to Peer ID" field and click Connect</li>
+                <li>Alternatively, click "Create Room" to generate a room ID that multiple people can join</li>
+                <li>See everyone's locations update in real-time on the map</li>
+            </ol>
+        </div>
+        
+        <footer>
+            <p>Created with Leaflet and WebRTC | Real-Time Location Tracking App</p>
+        </footer>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+    <!-- Using PeerJS for WebRTC connections -->
+    <script src="https://unpkg.com/peerjs@1.4.7/dist/peerjs.min.js"></script>
+    <script>
+        // Initialize variables
+        let map;
+        let myMarker;
+        let peer;
+        let myId;
+        let connections = {};
+        let peers = {};
+        let watchId;
+        
+        // Initialize the map
+        function initMap() {
+            map = L.map('map').setView([0, 0], 2);
+            
+            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+            }).addTo(map);
+            
+            console.log("Map initialized");
+        }
+        
+        // Update status indicators
+        function updateStatus(elementId, text, isError = false) {
+            const element = document.getElementById(elementId);
+            if (element) {
+                element.textContent = text;
+                element.style.color = isError ? '#ff6b6b' : '#ffffff';
+            }
+        }
+        
+        // Initialize PeerJS connection
+        function initPeer() {
+            // Generate a random ID if none exists in URL
+            const urlParams = new URLSearchParams(window.location.search);
+            const roomId = urlParams.get('room');
+            
+            if (roomId) {
+                myId = roomId;
+                peer = new Peer(roomId);
+            } else {
+                peer = new Peer();
+            }
+            
+            peer.on('open', (id) => {
+                myId = id;
+                updateStatus('user-id', id);
+                document.getElementById('peer-id').value = id;
+                updateStatus('connection-status', 'Ready to connect');
+                console.log('My peer ID is: ' + id);
+                
+                // If we have a room ID in URL, we're joining a room
+                if (roomId && roomId !== id) {
+                    connectToPeer(roomId);
+                }
+            });
+            
+            peer.on('connection', (conn) => {
+                console.log('Incoming connection from: ' + conn.peer);
+                setupConnection(conn);
+            });
+            
+            peer.on('error', (err) => {
+                console.error('Peer error:', err);
+                updateStatus('connection-status', 'Error: ' + err.type, true);
+            });
+            
+            peer.on('disconnected', () => {
+                updateStatus('connection-status', 'Disconnected', true);
+            });
+        }
+        
+        // Set up a data connection
+        function setupConnection(conn) {
+            const peerId = conn.peer;
+            connections[peerId] = conn;
+            
+            conn.on('open', () => {
+                console.log('Connected to: ' + peerId);
+                updateStatus('connection-status', 'Connected to ' + peerId.substring(0, 8));
+                updatePeerCount();
+                
+                // Send our current location to the new peer
+                if (myMarker) {
+                    sendLocation(myMarker.getLatLng());
+                }
+            });
+            
+            conn.on('data', (data) => {
+                console.log('Received data from ' + peerId, data);
+                if (data.type === 'location') {
+                    updatePeerLocation(peerId, data.lat, data.lng);
+                }
+            });
+            
+            conn.on('close', () => {
+                console.log('Connection closed with: ' + peerId);
+                removePeer(peerId);
+            });
+            
+            conn.on('error', (err) => {
+                console.error('Connection error with ' + peerId, err);
+                removePeer(peerId);
+            });
+        }
+        
+        // Connect to a peer
+        function connectToPeer(peerId) {
+            if (connections[peerId] || peerId === myId) return;
+            
+            console.log('Connecting to: ' + peerId);
+            updateStatus('connection-status', 'Connecting to ' + peerId.substring(0, 8));
+            
+            const conn = peer.connect(peerId);
+            setupConnection(conn);
+        }
+        
+        // Send location to all connected peers
+        function sendLocation(latLng) {
+            for (const peerId in connections) {
+                if (connections[peerId].open) {
+                    connections[peerId].send({
+                        type: 'location',
+                        lat: latLng.lat,
+                        lng: latLng.lng
+                    });
+                }
+            }
+        }
+        
+        // Update a peer's location on the map
+        function updatePeerLocation(peerId, lat, lng) {
+            if (peers[peerId]) {
+                peers[peerId].setLatLng([lat, lng]);
+            } else {
+                peers[peerId] = L.marker([lat, lng])
+                    .addTo(map)
+                    .bindPopup('Peer: ' + peerId.substring(0, 8));
+            }
+        }
+        
+        // Remove a peer from the map
+        function removePeer(peerId) {
+            if (peers[peerId]) {
+                map.removeLayer(peers[peerId]);
+                delete peers[peerId];
+            }
+            if (connections[peerId]) {
+                delete connections[peerId];
+            }
+            updatePeerCount();
+        }
+        
+        // Update peer count display
+        function updatePeerCount() {
+            const count = Object.keys(connections).length;
+            document.getElementById('peers-connected').textContent = count;
+        }
+        
+        // Initialize geolocation
+        function initGeolocation() {
+            if (navigator.geolocation) {
+                watchId = navigator.geolocation.watchPosition(
+                    (position) => {
+                        const { latitude, longitude } = position.coords;
+                        
+                        // Update the map
+                        if (myMarker) {
+                            myMarker.setLatLng([latitude, longitude]);
+                        } else {
+                            myMarker = L.marker([latitude, longitude], {
+                                icon: L.icon({
+                                    iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-green.png',
+                                    shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-shadow.png',
+                                    iconSize: [25, 41],
+                                    iconAnchor: [12, 41],
+                                    popupAnchor: [1, -34],
+                                    shadowSize: [41, 41]
+                                })
+                            })
+                            .addTo(map)
+                            .bindPopup('Your location')
+                            .openPopup();
+                        }
+                        
+                        map.setView([latitude, longitude], 16);
+                        updateStatus('location-status', 'Access granted');
+                        
+                        // Send location to peers
+                        if (Object.keys(connections).length > 0) {
+                            sendLocation({ lat: latitude, lng: longitude });
+                        }
+                    },
+                    (error) => {
+                        console.error('Geolocation error:', error);
+                        let errorMsg = 'Unknown error';
+                        
+                        switch(error.code) {
+                            case error.PERMISSION_DENIED:
+                                errorMsg = 'Permission denied. Please enable location access.';
+                                break;
+                            case error.POSITION_UNAVAILABLE:
+                                errorMsg = 'Location information unavailable.';
+                                break;
+                            case error.TIMEOUT:
+                                errorMsg = 'Location request timed out.';
+                                break;
+                        }
+                        
+                        updateStatus('location-status', errorMsg, true);
+                    },
+                    {
+                        enableHighAccuracy: true,
+                        timeout: 10000,
+                        maximumAge: 0,
+                    }
+                );
+            } else {
+                updateStatus('location-status', 'Geolocation is not supported by this browser.', true);
+            }
+        }
+        
+        // Initialize the application
+        function initApp() {
+            initMap();
+            initPeer();
+            initGeolocation();
+            
+            // Set up event listeners
+            document.getElementById('connect-btn').addEventListener('click', () => {
+                const peerId = document.getElementById('connect-id').value.trim();
+                if (peerId) {
+                    connectToPeer(peerId);
+                    document.getElementById('connect-id').value = '';
+                }
+            });
+            
+            document.getElementById('copy-id').addEventListener('click', () => {
+                const copyText = document.getElementById("peer-id");
+                copyText.select();
+                document.execCommand("copy");
+                alert("Copied your ID: " + copyText.value);
+            });
+            
+            document.getElementById('create-room').addEventListener('click', () => {
+                // Create a room by generating a new ID and reloading the page with it
+                const roomId = 'room-' + Math.random().toString(36).substring(2, 10);
+                window.location.search = 'room=' + roomId;
+            });
+            
+            // Allow pressing Enter in the connect input
+            document.getElementById('connect-id').addEventListener('keypress', (e) => {
+                if (e.key === 'Enter') {
+                    document.getElementById('connect-btn').click();
+                }
+            });
+        }
+        
+        // Start the app when the page loads
+        window.addEventListener('load', initApp);
+    </script>
+</body>
+</html>
