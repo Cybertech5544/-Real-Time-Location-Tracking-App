@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Perfect Real-Time Location Tracker</title>
+    <title>Professional Location Tracker</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
     <style>
         * {
@@ -74,15 +74,30 @@
             z-index: 1;
         }
         
-        .map-overlay {
+        .map-controls {
             position: absolute;
             top: 10px;
             right: 10px;
             z-index: 2;
-            background: rgba(0, 0, 0, 0.6);
-            padding: 10px;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+        
+        .map-btn {
+            padding: 10px 15px;
+            background: rgba(0, 0, 0, 0.7);
+            color: white;
+            border: none;
             border-radius: 5px;
+            cursor: pointer;
             backdrop-filter: blur(5px);
+            transition: all 0.3s;
+        }
+        
+        .map-btn:hover {
+            background: rgba(0, 0, 0, 0.9);
+            transform: translateY(-2px);
         }
         
         .panel-container {
@@ -306,6 +321,44 @@
             transform: translateX(0);
         }
         
+        .peer-list {
+            max-height: 200px;
+            overflow-y: auto;
+            margin-top: 10px;
+            border-radius: 5px;
+            background: rgba(255, 255, 255, 0.1);
+            padding: 10px;
+        }
+        
+        .peer-item {
+            padding: 8px;
+            margin-bottom: 5px;
+            background: rgba(0, 0, 0, 0.2);
+            border-radius: 4px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .peer-name {
+            font-weight: bold;
+        }
+        
+        .peer-actions {
+            display: flex;
+            gap: 5px;
+        }
+        
+        .peer-btn {
+            padding: 5px 10px;
+            border: none;
+            border-radius: 3px;
+            background: #2196F3;
+            color: white;
+            cursor: pointer;
+            font-size: 12px;
+        }
+        
         @media (max-width: 768px) {
             .content {
                 flex-direction: column;
@@ -324,17 +377,20 @@
 <body>
     <div class="container">
         <header>
-            <h1>Perfect Real-Time Location Tracker</h1>
+            <h1>Professional Location Tracker</h1>
             <p class="description">
-                Advanced real-time location tracking with smooth path visualization. Perfect for delivery tracking, friend location sharing, and more.
+                Real-time location tracking without auto-centering issues. Perfect for delivery tracking and location sharing.
             </p>
         </header>
         
         <div class="content">
             <div class="map-container">
                 <div id="map"></div>
-                <div class="map-overlay">
-                    <button class="btn btn-secondary" id="locate-me">Locate Me</button>
+                <div class="map-controls">
+                    <button class="map-btn" id="locate-me">Locate Me</button>
+                    <button class="map-btn" id="zoom-in">Zoom In</button>
+                    <button class="map-btn" id="zoom-out">Zoom Out</button>
+                    <button class="map-btn" id="toggle-paths">Hide Paths</button>
                 </div>
             </div>
             
@@ -360,7 +416,7 @@
                 </div>
                 
                 <div class="control-panel">
-                    <h2 class="panel-title">Controls</h2>
+                    <h2 class="panel-title">Connection</h2>
                     
                     <div class="input-group">
                         <label for="peer-id">Your Connection ID:</label>
@@ -374,26 +430,20 @@
                         <button class="btn" id="connect-btn">Connect</button>
                     </div>
                     
-                    <div class="toggle-group">
-                        <label for="path-toggle">Show Movement Paths:</label>
-                        <label class="switch">
-                            <input type="checkbox" id="path-toggle" checked>
-                            <span class="slider"></span>
-                        </label>
-                    </div>
-                    
-                    <div class="toggle-group">
-                        <label for="follow-toggle">Follow My Location:</label>
-                        <label class="switch">
-                            <input type="checkbox" id="follow-toggle" checked>
-                            <span class="slider"></span>
-                        </label>
+                    <div class="input-group">
+                        <label for="user-name">Your Display Name:</label>
+                        <input type="text" id="user-name" placeholder="Enter your name" value="User">
                     </div>
                     
                     <button class="btn" id="create-room">Create Room</button>
-                    <button class="btn btn-secondary" id="zoom-in">Zoom In</button>
-                    <button class="btn btn-secondary" id="zoom-out">Zoom Out</button>
-                    <button class="btn btn-danger" id="clear-paths">Clear All Paths</button>
+                    <button class="btn btn-danger" id="disconnect-all">Disconnect All</button>
+                    
+                    <h3 style="margin-top: 20px;">Connected Peers</h3>
+                    <div class="peer-list" id="peer-list">
+                        <div class="peer-item" style="color: #777; font-style: italic;">
+                            No peers connected
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
@@ -402,16 +452,16 @@
             <h2>How to Use</h2>
             <ol>
                 <li>Allow location access when prompted by your browser</li>
+                <li>Set your display name (optional)</li>
                 <li>Copy your Connection ID and share it with friends</li>
                 <li>Have friends enter your ID in the "Connect to Peer ID" field and click Connect</li>
-                <li>Toggle "Show Movement Paths" to see trails behind each user</li>
-                <li>Use "Follow My Location" to keep the map centered on your position</li>
+                <li>Use the map controls to navigate without auto-centering issues</li>
                 <li>See everyone's locations and movement paths update in real-time</li>
             </ol>
         </div>
         
         <footer>
-            <p>Created with Leaflet and WebRTC | Perfect Real-Time Path Tracking</p>
+            <p>Created with Leaflet and PeerJS | Professional Real-Time Tracking</p>
         </footer>
     </div>
 
@@ -433,15 +483,7 @@
         let userPaths = {};
         let watchId;
         let showPaths = true;
-        let followMe = true;
-        
-        // User colors for paths
-        const userColors = [
-            '#FF5252', '#FF4081', '#E040FB', '#7C4DFF', 
-            '#536DFE', '#448AFF', '#40C4FF', '#18FFFF',
-            '#64FFDA', '#69F0AE', '#B2FF59', '#EEFF41',
-            '#FFFF00', '#FFD740', '#FFAB40', '#FF6E40'
-        ];
+        let userName = "User";
         
         // Show notification
         function showNotification(message, duration = 3000) {
@@ -463,12 +505,6 @@
                 maxZoom: 19
             }).addTo(map);
             
-            // Add additional tile layer for better visual
-            L.tileLayer('https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png', {
-                maxZoom: 17,
-                attribution: 'Map data: &copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors, <a href="http://viewfinderpanoramas.org">SRTM</a> | Map style: &copy; <a href="https://opentopomap.org">OpenTopoMap</a>'
-            }).addTo(map);
-            
             console.log("Map initialized");
         }
         
@@ -478,6 +514,50 @@
             if (element) {
                 element.textContent = text;
                 element.style.color = isError ? '#ff6b6b' : '#ffffff';
+            }
+        }
+        
+        // Update peer list display
+        function updatePeerList() {
+            const peerList = document.getElementById('peer-list');
+            peerList.innerHTML = '';
+            
+            const peerIds = Object.keys(connections);
+            
+            if (peerIds.length === 0) {
+                peerList.innerHTML = '<div class="peer-item" style="color: #777; font-style: italic;">No peers connected</div>';
+                return;
+            }
+            
+            peerIds.forEach(peerId => {
+                const peerItem = document.createElement('div');
+                peerItem.className = 'peer-item';
+                peerItem.innerHTML = `
+                    <span class="peer-name">${peers[peerId]?.name || peerId.substring(0, 8)}</span>
+                    <div class="peer-actions">
+                        <button class="peer-btn" onclick="focusOnPeer('${peerId}')">View</button>
+                        <button class="peer-btn" style="background: #f44336;" onclick="disconnectPeer('${peerId}')">Remove</button>
+                    </div>
+                `;
+                peerList.appendChild(peerItem);
+            });
+        }
+        
+        // Focus on a specific peer
+        function focusOnPeer(peerId) {
+            if (peers[peerId]) {
+                const latLng = peers[peerId].getLatLng();
+                map.setView(latLng, map.getZoom());
+                showNotification(`Viewing ${peers[peerId].name || peerId.substring(0, 8)}`);
+            }
+        }
+        
+        // Disconnect from a specific peer
+        function disconnectPeer(peerId) {
+            if (connections[peerId]) {
+                connections[peerId].close();
+                removePeer(peerId);
+                showNotification(`Disconnected from ${peerId.substring(0, 8)}`);
             }
         }
         
@@ -491,7 +571,6 @@
                 if (roomId) {
                     myId = roomId;
                     peer = new Peer(roomId, {
-                        debug: 3,
                         config: {'iceServers': [
                             { url: 'stun:stun.l.google.com:19302' },
                             { url: 'stun:stun1.l.google.com:19302' }
@@ -499,7 +578,6 @@
                     });
                 } else {
                     peer = new Peer({
-                        debug: 3,
                         config: {'iceServers': [
                             { url: 'stun:stun.l.google.com:19302' },
                             { url: 'stun:stun1.l.google.com:19302' }
@@ -534,11 +612,6 @@
                 peer.on('disconnected', () => {
                     updateStatus('connection-status', 'Disconnected', true);
                     showNotification('Disconnected from peer server', 3000);
-                    
-                    // Try to reconnect
-                    setTimeout(() => {
-                        peer.reconnect();
-                    }, 5000);
                 });
             } catch (error) {
                 console.error('Failed to initialize PeerJS:', error);
@@ -558,6 +631,12 @@
                 updatePeerCount();
                 showNotification('Connected to ' + peerId.substring(0, 8));
                 
+                // Send our user info to the new peer
+                conn.send({
+                    type: 'user-info',
+                    name: userName
+                });
+                
                 // Send our current location to the new peer
                 if (myMarker) {
                     const latLng = myMarker.getLatLng();
@@ -567,8 +646,14 @@
             
             conn.on('data', (data) => {
                 console.log('Received data from ' + peerId, data);
+                
                 if (data.type === 'location') {
-                    updatePeerLocation(peerId, data.lat, data.lng, data.timestamp);
+                    updatePeerLocation(peerId, data.lat, data.lng);
+                } else if (data.type === 'user-info') {
+                    // Store peer's name
+                    if (!peers[peerId]) return;
+                    peers[peerId].name = data.name;
+                    updatePeerList();
                 }
             });
             
@@ -615,8 +700,7 @@
                         connections[peerId].send({
                             type: 'location',
                             lat: lat,
-                            lng: lng,
-                            timestamp: Date.now()
+                            lng: lng
                         });
                     } catch (error) {
                         console.error('Failed to send location to ' + peerId, error);
@@ -625,54 +709,35 @@
             }
         }
         
-        // Get a color for a user based on their ID
-        function getUserColor(userId) {
-            // Simple hash function to get consistent color for each user
-            let hash = 0;
-            for (let i = 0; i < userId.length; i++) {
-                hash = userId.charCodeAt(i) + ((hash << 5) - hash);
-            }
-            return userColors[Math.abs(hash) % userColors.length];
-        }
-        
         // Update a peer's location on the map
-        function updatePeerLocation(peerId, lat, lng, timestamp) {
+        function updatePeerLocation(peerId, lat, lng) {
             const newLatLng = [lat, lng];
             
             // Create or update marker
             if (peers[peerId]) {
-                // Smooth transition for existing marker
-                const oldLatLng = peers[peerId].getLatLng();
-                const bearing = calculateBearing(oldLatLng.lat, oldLatLng.lng, lat, lng);
-                
                 peers[peerId].setLatLng(newLatLng);
-                
-                // Update rotation if it's a recent move
-                if (Date.now() - timestamp < 5000) {
-                    peers[peerId].setRotationAngle(bearing);
-                }
             } else {
-                const userColor = getUserColor(peerId);
-                
-                // Create custom icon with direction indicator
-                const icon = L.divIcon({
-                    html: `<div style="background-color: ${userColor}; width: 30px; height: 30px; border-radius: 50%; display: flex; align-items: center; justify-content: center; color: white; font-weight: bold; border: 3px solid white; box-shadow: 0 0 10px rgba(0,0,0,0.5);">${peerId.substring(0, 1)}</div>`,
+                // Create marker for new peer
+                const peerIcon = L.divIcon({
+                    html: `<div style="background-color: #2196F3; width: 30px; height: 30px; border-radius: 50%; display: flex; align-items: center; justify-content: center; color: white; font-weight: bold; border: 3px solid white; box-shadow: 0 0 10px rgba(0,0,0,0.5);">P</div>`,
                     className: 'custom-div-icon',
                     iconSize: [30, 30],
                     iconAnchor: [15, 15]
                 });
                 
-                peers[peerId] = L.marker(newLatLng, { icon: icon })
+                peers[peerId] = L.marker(newLatLng, { icon: peerIcon })
                     .addTo(map)
-                    .bindPopup(`<strong>Peer:</strong> ${peerId.substring(0, 8)}<br>${new Date(timestamp).toLocaleTimeString()}`);
+                    .bindPopup(`<strong>Peer:</strong> ${peerId.substring(0, 8)}`);
                 
                 // Initialize path for this user
                 userPaths[peerId] = L.polyline([], { 
-                    color: userColor, 
+                    color: '#2196F3', 
                     weight: 4,
                     opacity: 0.7,
                     lineJoin: 'round'
                 }).addTo(map);
+                
+                updatePeerList();
             }
             
             // Update path if enabled
@@ -685,20 +750,6 @@
                     userPaths[peerId].setLatLngs(latLngs.slice(-100));
                 }
             }
-        }
-        
-        // Calculate bearing between two points
-        function calculateBearing(lat1, lng1, lat2, lng2) {
-            const dLng = (lng2 - lng1) * Math.PI / 180;
-            lat1 = lat1 * Math.PI / 180;
-            lat2 = lat2 * Math.PI / 180;
-            
-            const y = Math.sin(dLng) * Math.cos(lat2);
-            const x = Math.cos(lat1) * Math.sin(lat2) -
-                      Math.sin(lat1) * Math.cos(lat2) * Math.cos(dLng);
-            let bearing = Math.atan2(y, x) * 180 / Math.PI;
-            
-            return (bearing + 360) % 360;
         }
         
         // Remove a peer from the map
@@ -718,6 +769,7 @@
             }
             
             updatePeerCount();
+            updatePeerList();
         }
         
         // Update peer count display
@@ -726,17 +778,30 @@
             document.getElementById('peers-connected').textContent = count;
         }
         
-        // Clear all paths from the map
-        function clearAllPaths() {
-            for (const peerId in userPaths) {
-                map.removeLayer(userPaths[peerId]);
-                userPaths[peerId] = L.polyline([], { 
-                    color: getUserColor(peerId), 
-                    weight: 4,
-                    opacity: 0.7
-                }).addTo(map);
+        // Disconnect from all peers
+        function disconnectAllPeers() {
+            for (const peerId in connections) {
+                connections[peerId].close();
+                removePeer(peerId);
             }
-            showNotification('All paths cleared');
+            showNotification('Disconnected from all peers');
+        }
+        
+        // Toggle paths visibility
+        function togglePaths() {
+            showPaths = !showPaths;
+            
+            // Show or hide all paths
+            for (const peerId in userPaths) {
+                if (showPaths) {
+                    map.addLayer(userPaths[peerId]);
+                } else {
+                    map.removeLayer(userPaths[peerId]);
+                }
+            }
+            
+            document.getElementById('toggle-paths').textContent = showPaths ? 'Hide Paths' : 'Show Paths';
+            showNotification(showPaths ? 'Path tracking enabled' : 'Path tracking disabled');
         }
         
         // Initialize geolocation
@@ -760,51 +825,29 @@
                                     userPaths[myId].setLatLngs(latLngs.slice(-100));
                                 }
                             }
-                            
-                            // Update accuracy circle if it exists
-                            if (window.accuracyCircle) {
-                                window.accuracyCircle.setLatLng([latitude, longitude]);
-                                window.accuracyCircle.setRadius(accuracy);
-                            }
                         } else {
-                            const myColor = getUserColor(myId);
-                            
-                            // Create custom icon for myself
-                            const icon = L.divIcon({
+                            // Create marker for myself
+                            const myIcon = L.divIcon({
                                 html: `<div style="background-color: #4CAF50; width: 36px; height: 36px; border-radius: 50%; display: flex; align-items: center; justify-content: center; color: white; font-weight: bold; border: 3px solid white; box-shadow: 0 0 15px rgba(0,0,0,0.7);">You</div>`,
                                 className: 'custom-div-icon',
                                 iconSize: [36, 36],
                                 iconAnchor: [18, 18]
                             });
                             
-                            myMarker = L.marker([latitude, longitude], { icon: icon })
+                            myMarker = L.marker([latitude, longitude], { icon: myIcon })
                                 .addTo(map)
                                 .bindPopup('<strong>Your location</strong>')
                                 .openPopup();
                             
-                            // Add accuracy circle
-                            window.accuracyCircle = L.circle([latitude, longitude], {
-                                radius: accuracy,
-                                color: '#4CAF50',
-                                fillColor: '#4CAF50',
-                                fillOpacity: 0.2,
-                                weight: 1
-                            }).addTo(map);
-                            
                             // Initialize my path
                             userPaths[myId] = L.polyline([], { 
-                                color: myColor, 
+                                color: '#4CAF50', 
                                 weight: 6,
                                 opacity: 0.8
                             }).addTo(map);
                         }
                         
-                        // Center map on my location if follow me is enabled
-                        if (followMe) {
-                            map.setView([latitude, longitude], map.getZoom());
-                        }
-                        
-                        updateStatus('location-status', `Access granted (Accuracy: ${Math.round(accuracy)}m)`);
+                        updateStatus('location-status', `Tracking (Accuracy: ${Math.round(accuracy)}m)`);
                         
                         // Send location to peers
                         if (Object.keys(connections).length > 0) {
@@ -872,33 +915,17 @@
                 window.location.search = 'room=' + roomId;
             });
             
-            document.getElementById('clear-paths').addEventListener('click', () => {
-                clearAllPaths();
+            document.getElementById('disconnect-all').addEventListener('click', () => {
+                disconnectAllPeers();
             });
             
-            document.getElementById('path-toggle').addEventListener('change', (e) => {
-                showPaths = e.target.checked;
-                
-                // Show or hide all paths
-                for (const peerId in userPaths) {
-                    if (showPaths) {
-                        map.addLayer(userPaths[peerId]);
-                    } else {
-                        map.removeLayer(userPaths[peerId]);
-                    }
-                }
-                
-                showNotification(showPaths ? 'Path tracking enabled' : 'Path tracking disabled');
-            });
-            
-            document.getElementById('follow-toggle').addEventListener('change', (e) => {
-                followMe = e.target.checked;
-                showNotification(followMe ? 'Following your location' : 'Stopped following your location');
+            document.getElementById('toggle-paths').addEventListener('click', () => {
+                togglePaths();
             });
             
             document.getElementById('locate-me').addEventListener('click', () => {
                 if (myMarker) {
-                    map.setView(myMarker.getLatLng(), 16);
+                    map.setView(myMarker.getLatLng(), map.getZoom());
                     showNotification('Centered on your location');
                 }
             });
@@ -911,6 +938,19 @@
                 map.zoomOut();
             });
             
+            document.getElementById('user-name').addEventListener('change', (e) => {
+                userName = e.target.value || "User";
+                // Notify all connected peers of name change
+                for (const peerId in connections) {
+                    if (connections[peerId].open) {
+                        connections[peerId].send({
+                            type: 'user-info',
+                            name: userName
+                        });
+                    }
+                }
+            });
+            
             // Allow pressing Enter in the connect input
             document.getElementById('connect-id').addEventListener('keypress', (e) => {
                 if (e.key === 'Enter') {
@@ -918,33 +958,9 @@
                 }
             });
             
-            // Add custom CSS for rotation
-            const style = document.createElement('style');
-            style.textContent = `
-                .custom-div-icon {
-                    transition: transform 0.5s ease;
-                }
-            `;
-            document.head.appendChild(style);
-            
-            // Extend Leaflet Marker for rotation
-            L.Marker.include({
-                setRotationAngle: function(angle) {
-                    this._rotationAngle = angle;
-                    if (this._icon) {
-                        this._icon.style.transform = `rotate(${angle}deg)`;
-                    }
-                    return this;
-                },
-                
-                setRotationOrigin: function(origin) {
-                    this._rotationOrigin = origin;
-                    if (this._icon) {
-                        this._icon.style.transformOrigin = origin;
-                    }
-                    return this;
-                }
-            });
+            // Make functions available globally
+            window.focusOnPeer = focusOnPeer;
+            window.disconnectPeer = disconnectPeer;
         }
         
         // Start the app when the page loads
