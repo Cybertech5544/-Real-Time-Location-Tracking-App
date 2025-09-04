@@ -1,0 +1,14 @@
+{
+  "name": "realtime-location-tracker",
+  "version": "1.0.0",
+  "description": "Real-time location tracking app deployed on Vercel",
+  "scripts": {
+    "dev": "vercel dev"
+  },
+  "dependencies": {
+    "socket.io": "^4.7.2"
+  },
+  "devDependencies": {
+    "@vercel/node": "^2.0.0"
+  }
+}

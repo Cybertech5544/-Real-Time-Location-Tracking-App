@@ -1,0 +1,317 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Real-Time Location Tracker</title>
+    <link rel="stylesheet" href="/css/style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+        
+        body {
+            background: linear-gradient(135deg, #1a2a6c, #b21f1f, #fdbb2d);
+            color: white;
+            min-height: 100vh;
+            padding: 20px;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+        
+        header {
+            text-align: center;
+            padding: 20px;
+            background: rgba(0, 0, 0, 0.3);
+            border-radius: 10px;
+            backdrop-filter: blur(10px);
+        }
+        
+        h1 {
+            font-size: 2.5rem;
+            margin-bottom: 10px;
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.5);
+        }
+        
+        .description {
+            font-size: 1.1rem;
+            max-width: 800px;
+            margin: 0 auto;
+            line-height: 1.6;
+        }
+        
+        .content {
+            display: flex;
+            gap: 20px;
+            flex-wrap: wrap;
+        }
+        
+        .map-container {
+            flex: 1;
+            min-width: 300px;
+            border-radius: 10px;
+            overflow: hidden;
+            box-shadow: 0 10px 20px rgba(0, 0, 0, 0.3);
+            background: rgba(0, 0, 0, 0.2);
+            backdrop-filter: blur(10px);
+        }
+        
+        #map {
+            height: 500px;
+            width: 100%;
+        }
+        
+        .status-panel {
+            flex: 0 0 300px;
+            background: rgba(0, 0, 0, 0.3);
+            border-radius: 10px;
+            padding: 20px;
+            backdrop-filter: blur(10px);
+            box-shadow: 0 10px 20px rgba(0, 0, 0, 0.3);
+        }
+        
+        .status-title {
+            font-size: 1.5rem;
+            margin-bottom: 15px;
+            padding-bottom: 10px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.2);
+        }
+        
+        .status-item {
+            margin-bottom: 15px;
+            padding: 10px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 8px;
+        }
+        
+        .status-label {
+            font-weight: bold;
+            display: block;
+            margin-bottom: 5px;
+        }
+        
+        .status-value {
+            font-family: monospace;
+        }
+        
+        .instructions {
+            background: rgba(0, 0, 0, 0.3);
+            border-radius: 10px;
+            padding: 20px;
+            margin-top: 20px;
+            backdrop-filter: blur(10px);
+        }
+        
+        .instructions h2 {
+            margin-bottom: 15px;
+        }
+        
+        .instructions ol {
+            margin-left: 20px;
+            line-height: 1.6;
+        }
+        
+        .instructions li {
+            margin-bottom: 10px;
+        }
+        
+        footer {
+            text-align: center;
+            margin-top: 30px;
+            padding: 20px;
+            font-size: 0.9rem;
+            opacity: 0.8;
+        }
+        
+        @media (max-width: 768px) {
+            .content {
+                flex-direction: column;
+            }
+            
+            .status-panel {
+                flex: 1;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>Real-Time Location Tracker</h1>
+            <p class="description">
+                This application shows your current location on a map and allows you to see
+                the locations of other users in real-time. Share the link with friends to track each other!
+            </p>
+        </header>
+        
+        <div class="content">
+            <div class="map-container">
+                <div id="map"></div>
+            </div>
+            
+            <div class="status-panel">
+                <h2 class="status-title">Connection Status</h2>
+                <div class="status-item">
+                    <span class="status-label">Your ID:</span>
+                    <span id="user-id" class="status-value">Connecting...</span>
+                </div>
+                <div class="status-item">
+                    <span class="status-label">Connection:</span>
+                    <span id="connection-status" class="status-value">Not connected</span>
+                </div>
+                <div class="status-item">
+                    <span class="status-label">Location Access:</span>
+                    <span id="location-status" class="status-value">Requesting access...</span>
+                </div>
+                <div class="status-item">
+                    <span class="status-label">Online Users:</span>
+                    <span id="users-online" class="status-value">0</span>
+                </div>
+            </div>
+        </div>
+        
+        <div class="instructions">
+            <h2>How to Use</h2>
+            <ol>
+                <li>Allow location access when prompted by your browser</li>
+                <li>Share this page URL with friends you want to track</li>
+                <li>See everyone's locations update in real-time on the map</li>
+                <li>Each user is represented by a marker with their unique ID</li>
+            </ol>
+        </div>
+        
+        <footer>
+            <p>Created with Leaflet, Socket.io, and Vercel | Real-Time Location Tracking App</p>
+        </footer>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+    <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
+    <script>
+        // Initialize Socket.io connection
+        const socket = io();
+        console.log("Connecting to server...");
+        
+        let myId = null;
+        let map;
+        let markers = {};
+        let userCount = 0;
+        
+        // Update status indicators
+        function updateStatus(elementId, text, isError = false) {
+            const element = document.getElementById(elementId);
+            if (element) {
+                element.textContent = text;
+                element.style.color = isError ? '#ff6b6b' : '#ffffff';
+            }
+        }
+        
+        // Initialize the map
+        function initMap() {
+            map = L.map('map').setView([0, 0], 2);
+            
+            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+            }).addTo(map);
+            
+            console.log("Map initialized");
+        }
+        
+        // Initialize the application
+        function initApp() {
+            initMap();
+            
+            // Socket event handlers
+            socket.on('connect', () => {
+                myId = socket.id;
+                updateStatus('connection-status', 'Connected');
+                updateStatus('user-id', myId);
+                console.log("Connected with ID:", myId);
+            });
+            
+            socket.on('disconnect', () => {
+                updateStatus('connection-status', 'Disconnected', true);
+                console.log("Disconnected from server");
+            });
+            
+            socket.on('receive-location', (data) => {
+                const { id, latitude, longitude } = data;
+                
+                if (markers[id]) {
+                    markers[id].setLatLng([latitude, longitude]);
+                } else {
+                    markers[id] = L.marker([latitude, longitude])
+                        .addTo(map)
+                        .bindPopup(`User: ${id.substring(0, 8)}`);
+                    
+                    userCount++;
+                    updateStatus('users-online', userCount);
+                }
+                
+                if (id === myId) {
+                    map.setView([latitude, longitude], 16);
+                }
+            });
+            
+            socket.on('user-disconnected', (id) => {
+                if (markers[id]) {
+                    map.removeLayer(markers[id]);
+                    delete markers[id];
+                    
+                    userCount--;
+                    updateStatus('users-online', userCount);
+                }
+            });
+            
+            // Request geolocation
+            if (navigator.geolocation) {
+                navigator.geolocation.watchPosition(
+                    (position) => {
+                        const { latitude, longitude } = position.coords;
+                        socket.emit('send-location', { latitude, longitude });
+                        updateStatus('location-status', 'Access granted');
+                    },
+                    (error) => {
+                        console.error('Geolocation error:', error);
+                        let errorMsg = 'Unknown error';
+                        
+                        switch(error.code) {
+                            case error.PERMISSION_DENIED:
+                                errorMsg = 'Permission denied. Please enable location access.';
+                                break;
+                            case error.POSITION_UNAVAILABLE:
+                                errorMsg = 'Location information unavailable.';
+                                break;
+                            case error.TIMEOUT:
+                                errorMsg = 'Location request timed out.';
+                                break;
+                        }
+                        
+                        updateStatus('location-status', errorMsg, true);
+                    },
+                    {
+                        enableHighAccuracy: true,
+                        timeout: 10000,
+                        maximumAge: 0,
+                    }
+                );
+            } else {
+                updateStatus('location-status', 'Geolocation is not supported by this browser.', true);
+            }
+        }
+        
+        // Start the app when the page loads
+        window.addEventListener('load', initApp);
+    </script>
+</body>
+</html>
